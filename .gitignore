@@ -1,0 +1,12 @@
+# Backend
+complaint-chatbot/target/
+complaint-chatbot/.idea/
+complaint-chatbot/application.properties
+
+# Frontend
+complaint-chatbot-ui/node_modules/
+complaint-chatbot-ui/dist/
+
+# OS
+.DS_Store
+Thumbs.db
