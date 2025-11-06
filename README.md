@@ -81,4 +81,4 @@ MIT License
 
 ## 👤 Author
 
-Ebube
+Ebubechukwu Nwafor
