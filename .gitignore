@@ -10,3 +10,7 @@ complaint-chatbot-ui/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
