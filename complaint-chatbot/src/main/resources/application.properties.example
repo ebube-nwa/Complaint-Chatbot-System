@@ -12,3 +12,7 @@ server.port=8080
 # OpenAI Configuration
 openai.api.key=your-openai-api-key-here
 openai.api.url=https://api.openai.com/v1/chat/completions
+
+# JWT Configuration
+jwt.secret=your-256-bit-secret-key-goes-here
+jwt.expiration=86400000
