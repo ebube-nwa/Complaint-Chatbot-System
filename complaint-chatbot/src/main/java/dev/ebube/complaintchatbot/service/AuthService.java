@@ -29,7 +29,7 @@ public class AuthService {
         
         // Check if username exists
         if (userRepository.existsByUsername(username)) {
-            response.put(" error", "Username is already taken");
+            response.put("error", "Username is already taken");
             return response;
         }
 
