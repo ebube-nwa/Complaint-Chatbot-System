@@ -6,6 +6,9 @@ complaint-chatbot/application.properties
 # Frontend
 complaint-chatbot-ui/node_modules/
 complaint-chatbot-ui/dist/
+complaint-chatbot-ui/.env
+complaint-chatbot-ui/.env.local
+complaint-chatbot-ui/.env.*.local
 
 # OS
 .DS_Store
