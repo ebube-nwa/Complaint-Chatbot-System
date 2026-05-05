@@ -80,7 +80,7 @@ function App() {
       //Add error message to UI
       const errorMessage = {
         sender: 'BOT',
-        content: 'Sorry, I encountered an erroe. Please try again later.',
+        content: 'Sorry, I encountered an error. Please try again later.',
         timestamp: new Date().toLocaleTimeString(),
       };
       setMessages((prev) => [...prev, errorMessage]);

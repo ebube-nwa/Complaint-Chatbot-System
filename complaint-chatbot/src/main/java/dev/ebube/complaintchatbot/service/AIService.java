@@ -14,9 +14,12 @@ public class AIService {
     
     @Value("${openai.api.key}")
     private String apiKey;
-    
+
     @Value("${openai.api.url}")
     private String apiUrl;
+
+    @Value("${openai.api.model}")
+    private String model;
     
     private final WebClient webClient;
     
@@ -95,7 +98,7 @@ public class AIService {
     
     private String callOpenAI(String prompt) {
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-3.5-turbo");
+        requestBody.put("model", model);
         requestBody.put("messages", List.of(
             Map.of("role", "user", "content", prompt)
         ));
@@ -107,7 +110,7 @@ public class AIService {
     
     private String callOpenAIWithContext(String conversationContext) {
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-3.5-turbo");
+        requestBody.put("model", model);
         requestBody.put("messages", List.of(
             Map.of("role", "system", "content", "You are a helpful, empathetic customer service assistant. Respond naturally to the customer based on the conversation history."),
             Map.of("role", "user", "content", conversationContext)

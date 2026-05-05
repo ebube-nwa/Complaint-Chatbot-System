@@ -12,3 +12,4 @@ server.port=8080
 # OpenAI Configuration
 openai.api.key=your-openai-api-key-here
 openai.api.url=https://api.openai.com/v1/chat/completions
+openai.api.model=gpt-4o-mini
