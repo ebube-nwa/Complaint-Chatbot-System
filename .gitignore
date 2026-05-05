@@ -10,3 +10,10 @@ complaint-chatbot-ui/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# IntelliJ IDEA project settings
+.idea/
+*.iml
+
+# AI Assistant local data
+.claude/
