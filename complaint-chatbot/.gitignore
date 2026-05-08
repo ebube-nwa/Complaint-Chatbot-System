@@ -31,7 +31,6 @@ mvnw.cmd
 .env
 .env.local
 .env.*.local
-application.properties
 application-*.properties
 
 # IDE settings
