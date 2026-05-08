@@ -11,7 +11,13 @@ function App() {
   const [inputMessage, setInputMessage] = useState('');
   const [sessionId, setSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [userId] = useState('user_' + Math.random().toString(36).substring(2, 9));
+  const [userId] = useState(() => {
+    const stored = localStorage.getItem('chatbot_user_id');
+    if (stored) return stored;
+    const id = 'user_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem('chatbot_user_id', id);
+    return id;
+  });
 
   const handleStartChat = async (quickReplyText = null) => {
     setIsLoading(true);
