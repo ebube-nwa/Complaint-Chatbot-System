@@ -1,7 +1,9 @@
 package dev.ebube.complaintchatbot.service;
 
+import dev.ebube.complaintchatbot.entity.Complaint;
 import dev.ebube.complaintchatbot.entity.Conversation;
 import dev.ebube.complaintchatbot.entity.Message;
+import dev.ebube.complaintchatbot.repository.ComplaintRepository;
 import dev.ebube.complaintchatbot.repository.ConversationRepository;
 import dev.ebube.complaintchatbot.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class ConversationService {
     @Autowired
     private MessageRepository messageRepository;
     
+    @Autowired
+    private ComplaintRepository complaintRepository;
+
     @Autowired
     private AIService aiService;
     
@@ -63,6 +68,14 @@ public class ConversationService {
         userMessage.setSentiment(aiAnalysis.get("sentiment"));
         userMessage.setCategory(aiAnalysis.get("category"));
         messageRepository.save(userMessage);
+
+        // Persist as a Complaint record
+        Complaint complaint = new Complaint();
+        complaint.setMessage(messageContent);
+        complaint.setSentiment(aiAnalysis.get("sentiment"));
+        complaint.setCategory(aiAnalysis.get("category"));
+        complaint.setAiResponse(aiAnalysis.get("response"));
+        complaintRepository.save(complaint);
         
         // Create bot response message
         Message botMessage = new Message();
@@ -74,15 +87,24 @@ public class ConversationService {
         
         // Update conversation metadata
         conversation.setLastMessageAt(LocalDateTime.now());
+        conversation.setOverallSentiment(computeOverallSentiment(
+            messageRepository.findByConversationIdOrderByTimestampAsc(conversation.getId())
+        ));
         conversationRepository.save(conversation);
         
         return botMessage;
     }
     
-    public Conversation getConversation(String sessionId) {
-        return conversationRepository.findBySessionId(sessionId).orElse(null);
+    private String computeOverallSentiment(List<Message> messages) {
+        boolean hasPositive = false;
+        for (Message m : messages) {
+            String s = m.getSentiment();
+            if ("NEGATIVE".equals(s)) return "NEGATIVE";
+            if ("POSITIVE".equals(s)) hasPositive = true;
+        }
+        return hasPositive ? "POSITIVE" : "NEUTRAL";
     }
-    
+
     public List<Message> getConversationHistory(String sessionId) {
         Conversation conversation = conversationRepository.findBySessionId(sessionId)
             .orElseThrow(() -> new RuntimeException("Conversation not found"));
