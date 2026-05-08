@@ -11,6 +11,7 @@ function App() {
   const [inputMessage, setInputMessage] = useState('');
   const [sessionId, setSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [startError, setStartError] = useState(null);
   const [userId] = useState(() => {
     const stored = localStorage.getItem('chatbot_user_id');
     if (stored) return stored;
@@ -21,6 +22,7 @@ function App() {
 
   const handleStartChat = async (quickReplyText = null) => {
     setIsLoading(true);
+    setStartError(null);
     try {
       const response = await chatAPI.startChat(userId);
       const newSessionId = response.sessionId;
@@ -43,6 +45,10 @@ function App() {
       }
     } catch (error) {
       console.error('Error starting chat:', error);
+      const msg = error?.response?.data?.message
+        || (error?.message === 'Network Error' ? 'Cannot reach the server. Check your connection or API URL.' : null)
+        || 'Failed to start chat. Please try again.';
+      setStartError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -79,10 +85,17 @@ function App() {
       <div className="chat-window">
         <ChatHeader connected={!!sessionId} />
         {!sessionId ? (
-          <WelcomeScreen
-            onStart={handleStartChat}
-            isLoading={isLoading}
-          />
+          <>
+            <WelcomeScreen
+              onStart={handleStartChat}
+              isLoading={isLoading}
+            />
+            {startError && (
+              <p style={{ color: 'red', textAlign: 'center', padding: '0 1rem 1rem', fontSize: '0.875rem' }}>
+                {startError}
+              </p>
+            )}
+          </>
         ) : (
           <>
             <MessageList messages={messages} isLoading={isLoading} />
