@@ -1,15 +1,29 @@
+# Copy this file to application.properties and set the env vars below,
+# or export them in your shell / Render environment panel.
+
 # Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/complaint_db
-spring.datasource.username=postgres
-spring.datasource.password=YOUR_PASSWORD_HERE
+spring.datasource.url=${SPRING_DATASOURCE_URL}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+spring.jpa.show-sql=false
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
-# Server Configuration
-server.port=8080
+# Server Configuration (defaults to 8080 if SERVER_PORT is not set)
+server.port=${SERVER_PORT:8080}
 
-# OpenAI Configuration
-openai.api.key=your-openai-api-key-here
+# CORS Configuration (comma-separated for multiple origins)
+cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+# OpenAI Configuration (defaults to gpt-4o-mini if OPENAI_MODEL is not set)
+openai.api.key=${OPENAI_API_KEY}
 openai.api.url=https://api.openai.com/v1/chat/completions
-openai.api.model=gpt-4o-mini
+openai.api.model=${OPENAI_MODEL:gpt-4o-mini}
+
+# Required environment variables:
+# SPRING_DATASOURCE_URL      — Neon connection string (jdbc:postgresql://...?sslmode=require)
+# SPRING_DATASOURCE_USERNAME — Neon database username
+# SPRING_DATASOURCE_PASSWORD — Neon database password
+# OPENAI_API_KEY             — OpenAI API key
+# SERVER_PORT                — Set automatically by Render; leave unset for local dev
+# CORS_ALLOWED_ORIGINS       — Comma-separated frontend URLs e.g. https://your-app.onrender.com
