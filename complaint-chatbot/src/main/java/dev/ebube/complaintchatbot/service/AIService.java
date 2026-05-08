@@ -1,5 +1,6 @@
 package dev.ebube.complaintchatbot.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.ebube.complaintchatbot.entity.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -7,11 +8,18 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AIService {
-    
+
+    private static final String SYSTEM_PROMPT =
+        "You are a helpful, empathetic customer service assistant. " +
+        "For every user message, respond with a JSON object containing exactly these fields:\n" +
+        "  \"sentiment\": one of POSITIVE, NEGATIVE, or NEUTRAL\n" +
+        "  \"category\": one of PRODUCT, SERVICE, BILLING, SHIPPING, TECHNICAL, or OTHER\n" +
+        "  \"response\": your empathetic reply to the customer\n" +
+        "Output only the raw JSON object with no markdown, no code fences, and no extra text.";
+
     @Value("${openai.api.key}")
     private String apiKey;
 
@@ -20,108 +28,53 @@ public class AIService {
 
     @Value("${openai.api.model}")
     private String model;
-    
+
     private final WebClient webClient;
-    
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     public AIService() {
         this.webClient = WebClient.builder().build();
     }
-    
-    // Original method for single complaint analysis
+
     public Map<String, String> analyzeComplaint(String message) {
-        Map<String, String> analysis = new HashMap<>();
-        
         try {
-            String sentiment = callOpenAI(
-                "Analyze the sentiment of this customer message and respond with only one word: POSITIVE, NEGATIVE, or NEUTRAL.\n\nMessage: " + message
-            );
-            analysis.put("sentiment", sentiment.trim().toUpperCase());
-            
-            String category = callOpenAI(
-                "Categorize this customer complaint into one of these categories (respond with only the category name): PRODUCT, SERVICE, BILLING, SHIPPING, TECHNICAL, OTHER.\n\nMessage: " + message
-            );
-            analysis.put("category", category.trim().toUpperCase());
-            
-            String response = callOpenAI(
-                "You are a helpful customer service assistant. Write a brief, empathetic response to this customer complaint:\n\n" + message
-            );
-            analysis.put("response", response.trim());
-            
+            String raw = callOpenAI(List.of(
+                Map.of("role", "system", "content", SYSTEM_PROMPT),
+                Map.of("role", "user", "content", message)
+            ));
+            return parseAnalysis(raw);
         } catch (Exception e) {
             System.err.println("Error calling OpenAI: " + e.getMessage());
-            analysis.put("sentiment", "NEUTRAL");
-            analysis.put("category", "UNCATEGORIZED");
-            analysis.put("response", "Thank you for your feedback. We're reviewing your message and will get back to you soon.");
+            return fallback("Thank you for your feedback. We're reviewing your message and will get back to you soon.");
         }
-        
-        return analysis;
     }
-    
-    // New method for conversation-based responses with context
+
     public Map<String, String> generateContextualResponse(String userMessage, List<Message> conversationHistory) {
-        Map<String, String> result = new HashMap<>();
-        
         try {
-            // Build conversation context
-            StringBuilder context = new StringBuilder();
-            context.append("Previous conversation:\n");
+            List<Map<String, String>> messages = new ArrayList<>();
+            messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
             for (Message msg : conversationHistory) {
-                context.append(msg.getSender()).append(": ").append(msg.getContent()).append("\n");
+                String role = "USER".equals(msg.getSender()) ? "user" : "assistant";
+                messages.add(Map.of("role", role, "content", msg.getContent()));
             }
-            context.append("\nUser: ").append(userMessage);
-            
-            // Analyze sentiment
-            String sentiment = callOpenAI(
-                "Analyze the sentiment of this customer message and respond with only one word: POSITIVE, NEGATIVE, or NEUTRAL.\n\nMessage: " + userMessage
-            );
-            result.put("sentiment", sentiment.trim().toUpperCase());
-            
-            // Categorize
-            String category = callOpenAI(
-                "Categorize this customer message into one of these categories (respond with only the category name): PRODUCT, SERVICE, BILLING, SHIPPING, TECHNICAL, OTHER.\n\nMessage: " + userMessage
-            );
-            result.put("category", category.trim().toUpperCase());
-            
-            // Generate contextual response
-            String response = callOpenAIWithContext(context.toString());
-            result.put("response", response.trim());
-            
+            messages.add(Map.of("role", "user", "content", userMessage));
+
+            String raw = callOpenAI(messages);
+            return parseAnalysis(raw);
         } catch (Exception e) {
             System.err.println("Error calling OpenAI: " + e.getMessage());
-            result.put("sentiment", "NEUTRAL");
-            result.put("category", "OTHER");
-            result.put("response", "I understand. How else can I help you?");
+            return fallback("I understand. How else can I help you?");
         }
-        
-        return result;
     }
-    
-    private String callOpenAI(String prompt) {
+
+    private String callOpenAI(List<Map<String, String>> messages) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
-        requestBody.put("messages", List.of(
-            Map.of("role", "user", "content", prompt)
-        ));
-        requestBody.put("max_tokens", 150);
+        requestBody.put("messages", messages);
+        requestBody.put("max_tokens", 300);
         requestBody.put("temperature", 0.7);
-        
-        return makeAPICall(requestBody);
-    }
-    
-    private String callOpenAIWithContext(String conversationContext) {
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", model);
-        requestBody.put("messages", List.of(
-            Map.of("role", "system", "content", "You are a helpful, empathetic customer service assistant. Respond naturally to the customer based on the conversation history."),
-            Map.of("role", "user", "content", conversationContext)
-        ));
-        requestBody.put("max_tokens", 200);
-        requestBody.put("temperature", 0.8);
-        
-        return makeAPICall(requestBody);
-    }
-    
-    private String makeAPICall(Map<String, Object> requestBody) {
+        requestBody.put("response_format", Map.of("type", "json_object"));
+
         Mono<Map> responseMono = webClient.post()
             .uri(apiUrl)
             .header("Authorization", "Bearer " + apiKey)
@@ -129,9 +82,8 @@ public class AIService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class);
-        
+
         Map response = responseMono.block();
-        
         if (response != null && response.containsKey("choices")) {
             List<Map> choices = (List<Map>) response.get("choices");
             if (!choices.isEmpty()) {
@@ -139,7 +91,24 @@ public class AIService {
                 return (String) message.get("content");
             }
         }
-        
-        return "Unable to process";
+        return "{}";
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parseAnalysis(String json) throws Exception {
+        Map<String, Object> parsed = objectMapper.readValue(json, Map.class);
+        Map<String, String> result = new HashMap<>();
+        result.put("sentiment", String.valueOf(parsed.getOrDefault("sentiment", "NEUTRAL")).trim().toUpperCase());
+        result.put("category", String.valueOf(parsed.getOrDefault("category", "OTHER")).trim().toUpperCase());
+        result.put("response", String.valueOf(parsed.getOrDefault("response", "I understand. How else can I help you?")).trim());
+        return result;
+    }
+
+    private Map<String, String> fallback(String responseText) {
+        Map<String, String> result = new HashMap<>();
+        result.put("sentiment", "NEUTRAL");
+        result.put("category", "OTHER");
+        result.put("response", responseText);
+        return result;
     }
 }
